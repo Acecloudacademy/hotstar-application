@@ -18,6 +18,11 @@ pipeline{
                checkout scm
             }
         }
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
         stage("Sonarqube Analysis "){
             steps{
                 withSonarQubeEnv('SonarQube') {
@@ -26,6 +31,7 @@ pipeline{
                 }
             }
         }
+         
         stage("quality gate"){
            steps {
                 script {
@@ -33,11 +39,7 @@ pipeline{
                 }
             } 
         }
-        stage('Install Dependencies') {
-            steps {
-                sh "npm install"
-            }
-        }
+       
         stage('OWASP FS SCAN') {
             steps {
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey  F95F0EB1-69BF-F011-8364-0EBF96DE670D', odcInstallation: 'DC'
@@ -49,20 +51,28 @@ pipeline{
                 sh "trivy fs . > trivyfs.txt"
             }
         }
-        stage("Docker Build & Push"){
+        stage("Docker Build"){
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
                        sh "docker build -t hotstar ."
-                       sh "docker tag hotstar acecloudacademy/hotstar:latest "
-                       sh "docker push acecloudacademy/hotstar:latest "
                     }
                 }
             }
         }
-        stage("TRIVY"){
+        stage("TRIVY Image Scan"){
             steps{
                 sh "trivy image acecloudacademy/hotstar:latest > trivyimage.txt" 
+            }
+        }
+        stage(" Docker Push"){
+            steps{
+                script{
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
+                       sh "docker tag hotstar acecloudacademy/hotstar:latest "
+                       sh "docker push acecloudacademy/hotstar:latest "
+                    }
+                }
             }
         }
         
